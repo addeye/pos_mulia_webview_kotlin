@@ -76,21 +76,40 @@ class MainActivity : AppCompatActivity() {
             downloadUserAgent = userAgent
             downloadContentDisposition = contentDisposition
             downloadMimeType = mimeType
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    // Request storage permission
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), STORAGE_PERMISSION_CODE)
-                } else {
-                    startDownload(url, userAgent, contentDisposition, mimeType)
-                }
-            } else {
-                startDownload(url, userAgent, contentDisposition, mimeType)
-            }
+            checkPermissionsAndDownload()
         }
 
         webView.loadUrl("https://posmulia.sentanateknologi.co.id")
     }
+
+    private fun checkPermissionsAndDownload() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissions = arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_AUDIO
+            )
+            val allGranted = permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+
+            if (allGranted) {
+                downloadUrl?.let {
+                    startDownload(it, downloadUserAgent!!, downloadContentDisposition!!, downloadMimeType!!)
+                }
+            } else {
+                ActivityCompat.requestPermissions(this, permissions, STORAGE_PERMISSION_CODE)
+            }
+        } else {
+            // Handling for older versions
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                downloadUrl?.let {
+                    startDownload(it, downloadUserAgent!!, downloadContentDisposition!!, downloadMimeType!!)
+                }
+            } else {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), STORAGE_PERMISSION_CODE)
+            }
+        }
+    }
+
 
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -121,8 +140,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == STORAGE_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, start download
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 downloadUrl?.let {
                     startDownload(it, downloadUserAgent!!, downloadContentDisposition!!, downloadMimeType!!)
                 }
@@ -131,6 +149,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
+
+    private fun requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissions = arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_AUDIO
+            )
+            ActivityCompat.requestPermissions(this, permissions, STORAGE_PERMISSION_CODE)
+        } else {
+            val permissions = arrayOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            ActivityCompat.requestPermissions(this, permissions, STORAGE_PERMISSION_CODE)
+        }
+    }
+
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
