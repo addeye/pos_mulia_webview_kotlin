@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private var downloadUserAgent: String? = null
     private var downloadContentDisposition: String? = null
     private var downloadMimeType: String? = null
+    private var cameraImageUri: Uri? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,13 +52,17 @@ class MainActivity : AppCompatActivity() {
                 fileChooserCallback?.onReceiveValue(null)
                 fileChooserCallback = filePathCallback
 
-                val intent = fileChooserParams?.createIntent()
-                try {
-                    fileChooserLauncher.launch(intent)
-                } catch (e: Exception) {
-                    fileChooserCallback = null
-                    return false
+                val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                val photoFile = createImageFile()
+                cameraImageUri = Uri.fromFile(photoFile)
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri)
+
+                val chooserIntent = Intent(Intent.ACTION_CHOOSER).apply {
+                    putExtra(Intent.EXTRA_INTENT, takePictureIntent)
+                    putExtra(Intent.EXTRA_TITLE, "Select Option")
                 }
+
+                fileChooserLauncher.launch(chooserIntent)
                 return true
             }
 
@@ -110,7 +115,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val data: Intent? = result.data
@@ -150,8 +154,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     private fun requestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissions = arrayOf(
@@ -168,6 +170,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun createImageFile(): File {
+        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile("IMG_${System.currentTimeMillis()}", ".jpg", storageDir)
+    }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
